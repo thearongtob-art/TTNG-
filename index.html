@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAMBO — Signal Terminal</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#0b0e0d">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CAMBO">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0b0e0d;
+    --panel:#121614;
+    --line:#1f2723;
+    --dim:#5c6862;
+    --text:#dfe8e3;
+    --bull:#3ddc84;
+    --bull-dim:#173324;
+    --bear:#ff5c5c;
+    --bear-dim:#331717;
+    --neutral:#e0b23d;
+    --neutral-dim:#332a13;
+    --live:#4fb3ff;
+    --live-dim:#122636;
+    --amber-glow: rgba(61,220,132,0.15);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;}
+  .kh{font-family:'Noto Sans Khmer','JetBrains Mono',monospace;}
+
+  body{
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-attachment: fixed;
+  }
+
+  .wrap{max-width:980px;margin:0 auto;padding:28px 18px 80px;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:18px;
+    flex-wrap:wrap; gap:10px;
+  }
+  .brand{display:flex; align-items:baseline; gap:12px;}
+  .brand .mark{
+    font-weight:800; font-size:28px; letter-spacing:1px;
+    color:var(--bull); text-shadow:0 0 18px var(--amber-glow);
+  }
+  .brand .sub{color:var(--dim); font-size:12px; letter-spacing:2px; text-transform:uppercase;}
+  .clock{font-size:12px; color:var(--dim); text-align:right;}
+  #liveTime{color:var(--text);}
+
+  .livepanel{
+    border:1px solid var(--line); background:var(--panel); padding:16px; margin-bottom:18px;
+  }
+  .livepanel .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+  .livepanel label{font-size:11px; color:var(--dim); letter-spacing:1px; text-transform:uppercase; margin-right:6px;}
+  select, input.symbolInput{
+    background:#0e1211; border:1px solid var(--line); color:var(--text);
+    font-family:inherit; padding:8px 10px; font-size:12.5px;
+  }
+  input.symbolInput{width:120px; text-transform:uppercase;}
+  .quickbtn{
+    background:#0e1211; border:1px solid var(--line); color:var(--dim);
+    font-family:inherit; padding:8px 12px; font-size:12px; cursor:pointer; letter-spacing:.5px;
+  }
+  .quickbtn.active{border-color:var(--live); color:var(--live);}
+  .quickbtn:hover{border-color:var(--live);}
+  button.fetchBtn{
+    background:var(--live-dim); border:1px solid var(--live); color:var(--live);
+    font-family:inherit; padding:8px 16px; font-size:12px; cursor:pointer; letter-spacing:1px; font-weight:600;
+  }
+  button.fetchBtn:hover{background:var(--live);color:#04140b;}
+  button.fetchBtn:disabled{opacity:.5; cursor:wait;}
+  .livestatus{font-size:11.5px; color:var(--dim); margin-top:10px; min-height:16px;}
+  .livestatus.err{color:var(--bear);}
+  .livestatus.ok{color:var(--live);}
+
+  .calc-title{font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color:var(--text); margin-bottom:14px;}
+  .calc-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px;}
+  .calc-field{display:flex; flex-direction:column; gap:4px;}
+  .calc-field label{font-size:10.5px; color:var(--dim); letter-spacing:.5px; text-transform:uppercase;}
+  .calc-field label .optional{color:var(--dim); opacity:.6; text-transform:none; font-size:9.5px;}
+  .calc-field input{
+    background:#0e1211; border:1px solid var(--line); color:var(--text);
+    font-family:inherit; padding:8px 10px; font-size:13px; width:100%;
+  }
+  .calc-field input:focus{border-color:var(--live); outline:none;}
+  .calc-output{
+    margin-top:16px; padding:14px; border:1px solid var(--line); background:#0e1211;
+  }
+  .calc-output-line{font-size:12.5px; color:var(--dim); line-height:1.9;}
+  .calc-output-line strong{color:var(--text); font-weight:700;}
+  .calc-output-line .highlight{color:var(--live); font-weight:700;}
+  .calc-output-line .warn{color:var(--bear); font-weight:700;}
+
+  .verdict{
+    border:1px solid var(--line); background:var(--panel);
+    padding:20px; margin-bottom:22px; position:relative; overflow:hidden;
+  }
+  .verdict::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:5px;
+    background:var(--dim); transition:background .3s;
+  }
+  .verdict.bull::before{background:var(--bull);}
+  .verdict.bear::before{background:var(--bear);}
+  .verdict.neutral::before{background:var(--neutral);}
+  .verdict .label{font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase;}
+  .verdict .headline{font-size:22px; font-weight:700; margin-top:6px;}
+  .verdict.bull .headline{color:var(--bull);}
+  .verdict.bear .headline{color:var(--bear);}
+  .verdict.neutral .headline{color:var(--neutral);}
+  .verdict .score-row{display:flex; align-items:center; gap:14px; margin-top:14px;}
+  .bar{flex:1; height:8px; background:var(--line); position:relative; border-radius:2px; overflow:hidden;}
+  .bar .fill{position:absolute; top:0; bottom:0; background:linear-gradient(90deg,var(--bear),var(--neutral),var(--bull)); }
+  .bar .needle{position:absolute; top:-3px; width:2px; height:14px; background:#fff;}
+  .score-num{font-size:13px; color:var(--dim); min-width:70px; text-align:right;}
+  .score-pct-row{text-align:center; margin-top:10px;}
+  .score-pct{font-size:26px; font-weight:800; letter-spacing:1px; color:var(--text);}
+  .verdict.bull .score-pct{color:var(--bull);}
+  .verdict.bear .score-pct{color:var(--bear);}
+  .verdict.neutral .score-pct{color:var(--neutral);}
+  .verdict .notes{margin-top:12px; font-size:12.5px; color:var(--dim); line-height:1.6;}
+  .verdict .notes strong{color:var(--text); font-weight:600;}
+
+  .dirbadge{
+    border:2px solid var(--dim); background:var(--panel);
+    padding:18px 20px; margin-bottom:22px; text-align:center;
+    transition:all .25s;
+  }
+  .dirbadge-label{font-size:11px; letter-spacing:3px; color:var(--dim); text-transform:uppercase;}
+  .dirbadge-value{font-size:38px; font-weight:800; letter-spacing:2px; margin:6px 0;}
+  .dirbadge-sub{font-size:12px; color:var(--dim);}
+  .dirbadge.dir-long{border-color:var(--bull); background:var(--bull-dim); box-shadow:0 0 24px rgba(61,220,132,0.15);}
+  .dirbadge.dir-long .dirbadge-value{color:var(--bull);}
+  .dirbadge.dir-short{border-color:var(--bear); background:var(--bear-dim); box-shadow:0 0 24px rgba(255,92,92,0.15);}
+  .dirbadge.dir-short .dirbadge-value{color:var(--bear);}
+  .dirbadge.dir-wait{border-color:var(--neutral); background:var(--neutral-dim);}
+  .dirbadge.dir-wait .dirbadge-value{color:var(--neutral);}
+
+  .confirmbox{
+    border:1px solid var(--line); background:var(--panel);
+    padding:12px 16px; margin-bottom:22px; font-size:13px; text-align:center;
+  }
+  .confirmbox-label{font-size:10.5px; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:4px;}
+  .confirmbox.confirm-ready{border-color:var(--bull); background:var(--bull-dim); color:var(--bull); font-weight:700;}
+  .confirmbox.confirm-wait{border-color:var(--neutral); background:var(--neutral-dim); color:var(--neutral);}
+  .confirmbox.confirm-pending{border-color:var(--line); color:var(--dim);}
+
+  .grid{display:grid; gap:14px;}
+
+  .card{
+    border:1px solid var(--line); background:var(--panel); padding:16px;
+  }
+  .card h3{
+    margin:0 0 4px; font-size:13px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--text); display:flex; justify-content:space-between; align-items:center;
+  }
+  .card h3 .tag{
+    font-size:10px; padding:2px 7px; border:1px solid var(--line); color:var(--dim);
+    letter-spacing:1px; text-transform:none; font-weight:400;
+  }
+  .card h3 .tag.auto{border-color:var(--live); color:var(--live);}
+  .card h3 .tag.set{border-color:var(--dim); color:var(--text);}
+  .card .hint{font-size:11.5px; color:var(--dim); margin-bottom:12px;}
+
+  .opts{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px;}
+  .opt{
+    border:1px solid var(--line); background:#0e1211; padding:10px 12px;
+    cursor:pointer; font-size:12.5px; color:var(--text); text-align:left;
+    transition:all .15s; line-height:1.4; position:relative;
+  }
+  .opt:hover{border-color:var(--dim);}
+  .opt .oline1{font-weight:600;}
+  .opt .oline2{color:var(--dim); font-size:11px; margin-top:3px;}
+  .opt.sel-bull{border-color:var(--bull); background:var(--bull-dim);}
+  .opt.sel-bull .oline1{color:var(--bull);}
+  .opt.sel-bear{border-color:var(--bear); background:var(--bear-dim);}
+  .opt.sel-bear .oline1{color:var(--bear);}
+  .opt.sel-neutral{border-color:var(--neutral); background:var(--neutral-dim);}
+  .opt.sel-neutral .oline1{color:var(--neutral);}
+  .opt.auto-marked::after{
+    content:"AUTO"; position:absolute; top:6px; right:8px; font-size:9px; color:var(--live); letter-spacing:1px;
+  }
+
+  .footer-actions{display:flex; gap:10px; margin-top:20px; flex-wrap:wrap;}
+  button.reset{
+    background:transparent; border:1px solid var(--line); color:var(--dim);
+    font-family:inherit; padding:10px 16px; cursor:pointer; font-size:12px; letter-spacing:1px;
+  }
+  button.reset:hover{border-color:var(--bear); color:var(--bear);}
+
+  .disclaimer{
+    margin-top:26px; font-size:11px; color:var(--dim); border-top:1px solid var(--line);
+    padding-top:14px; line-height:1.7;
+  }
+
+  @media (max-width:600px){
+    .brand .mark{font-size:22px;}
+    .verdict .headline{font-size:18px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <div class="mark">CAMBO</div>
+      <div class="sub">multi-indicator signal checklist</div>
+    </div>
+    <div class="clock">SESSION LOCAL TIME<br><span id="liveTime">--:--:--</span></div>
+  </header>
+
+  <div id="installBar" style="display:none; border:1px solid var(--live); background:var(--live-dim); color:var(--live); padding:10px 14px; margin-bottom:16px; font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+    <span class="kh">📲 Install app នេះលើ home screen ដើម្បីប្រើដូច app ធម្មតា</span>
+    <button id="installBtn" class="quickbtn" style="border-color:var(--live); color:var(--live);">INSTALL</button>
+  </div>
+
+  <div class="livepanel">
+    <div class="row">
+      <div>
+        <label>PAIR</label>
+        <span id="quickbtns"></span>
+      </div>
+      <input class="symbolInput" id="symbolInput" value="BTCUSDT" placeholder="e.g. SOLUSDT">
+      <div>
+        <label>TIMEFRAME</label>
+        <select id="intervalSelect">
+          <option value="15m">15m</option>
+          <option value="1h">1h</option>
+          <option value="4h">4h</option>
+          <option value="1d">1d</option>
+        </select>
+      </div>
+      <button class="fetchBtn" id="fetchBtn">⟲ FETCH LIVE DATA (Binance Futures)</button>
+    </div>
+    <div class="livestatus" id="liveStatus">មិនទាន់មាន data ស្វ័យប្រវត្តិទេ — ចុច FETCH ដើម្បីទាញ funding, OI, volume, CVD, EMA, MACD, RSI ដោយស្វ័យប្រវត្តិ។ Liquidity Zone នៅតែត្រូវកំណត់ដោយដៃ។</div>
+  </div>
+
+  <div class="livepanel" id="calcPanel">
+    <div class="calc-title">💰 POSITION SIZE CALCULATOR</div>
+    <div class="calc-grid">
+      <div class="calc-field">
+        <label>Account Balance ($)</label>
+        <input type="number" id="calcBalance" inputmode="decimal" placeholder="ឧ. 1000">
+      </div>
+      <div class="calc-field">
+        <label>Risk (%)</label>
+        <input type="number" id="calcRisk" inputmode="decimal" placeholder="ឧ. 1" value="1">
+      </div>
+      <div class="calc-field">
+        <label>Entry Price ($)</label>
+        <input type="number" id="calcEntry" inputmode="decimal" placeholder="ឧ. 65000">
+      </div>
+      <div class="calc-field">
+        <label>Stop Loss ($)</label>
+        <input type="number" id="calcSL" inputmode="decimal" placeholder="ឧ. 64500">
+      </div>
+      <div class="calc-field">
+        <label>Take Profit ($) <span class="optional">optional</span></label>
+        <input type="number" id="calcTP" inputmode="decimal" placeholder="ឧ. 66000">
+      </div>
+      <div class="calc-field">
+        <label>Leverage <span class="optional">optional</span></label>
+        <input type="number" id="calcLeverage" inputmode="decimal" placeholder="ឧ. 10" value="1">
+      </div>
+    </div>
+    <div class="calc-output" id="calcOutput">
+      <div class="calc-output-line kh">សូមបំពេញ Account Balance, Risk%, Entry, និង Stop Loss ដើម្បីគណនា</div>
+    </div>
+  </div>
+
+  <div id="directionBadge" class="dirbadge dir-wait">
+    <div class="dirbadge-label">TRADE DIRECTION</div>
+    <div class="dirbadge-value" id="dirValue">WAIT</div>
+    <div class="dirbadge-sub kh" id="dirSub">ត្រូវជ្រើសរើសសូចនាករបន្ថែម ដើម្បីទទួលបានទិសដៅច្បាស់លាស់</div>
+  </div>
+
+  <div id="confirmBadge" class="confirmbox confirm-pending">
+    <div class="confirmbox-label">CONFIRMATION CANDLE</div>
+    <div class="confirmbox-value kh" id="confirmValue">មិនទាន់មាន candle data — ចុច FETCH LIVE DATA</div>
+  </div>
+
+  <div class="verdict neutral" id="camboBox">
+    <div class="label">CAMBO Signal — Funding × Liquidity Zone</div>
+    <div class="headline" id="camboHeadline">Waiting Confirmation</div>
+    <div class="notes" id="camboNotes">ជ្រើសរើស Funding Rate និង Liquidity Zone ខាងក្រោម ដើម្បីទទួលបានស្លាក CAMBO ច្បាស់លាស់។</div>
+  </div>
+
+  <div id="dontTradeBanner" style="display:none; border:1px solid var(--bear); background:var(--bear-dim); color:var(--bear); padding:14px 18px; margin-bottom:22px; font-weight:700; font-size:14px;">
+    ⛔ DON'T TRADE — <span id="dontTradeReason" class="kh" style="font-weight:400; font-size:12.5px; display:block; margin-top:4px;"></span>
+  </div>
+
+  <div class="verdict neutral" id="verdictBox">
+    <div class="label">Composite Read</div>
+    <div class="headline" id="verdictHeadline">មិនទាន់មានទិន្នន័យគ្រប់គ្រាន់ — ជ្រើសរើសសូចនាករខាងក្រោម</div>
+    <div class="score-pct-row">
+      <span id="scorePct" class="score-pct">0%</span>
+    </div>
+    <div class="score-row">
+      <div class="score-num" id="scoreLeft">BEAR</div>
+      <div class="bar"><div class="fill" id="scoreFill"></div><div class="needle" id="scoreNeedle"></div></div>
+      <div class="score-num" id="scoreRight">BULL</div>
+    </div>
+    <div class="notes" id="verdictNotes">ជ្រើសរើសយ៉ាងហោចណាស់ ២-៣ សូចនាករ ដើម្បីទទួលបានទិសដៅដែលអាចទុកចិត្តបាន។ <strong>Waiting Confirmation Candle</strong> តែងតែជាជំហានចុងក្រោយមុននឹងចូល entry ណាមួយ។</div>
+  </div>
+
+  <div class="grid" id="cardsRoot"></div>
+
+  <div class="footer-actions">
+    <button class="reset" id="resetBtn">↺ RESET ALL</button>
+  </div>
+
+  <div class="disclaimer kh">
+    ⚠ នេះជាឧបករណ៍ជួយសង្ខេបក្របខណ្ឌ CAMBO ផ្ទាល់ខ្លួនរបស់អ្នក ដោយផ្អែកលើទិន្នន័យសាធារណៈពី Binance Futures API។ វាមិនមែនជាការណែនាំវិនិយោគ ឬការធានាលទ្ធផលទេ — ជា derived approximation (ជាពិសេស CVD ដែលប៉ាន់ស្មានពី taker buy/sell volume មិនមែនទិន្នន័យ order-flow ពិតប្រាកដ)។ តែងតែរង់ចាំ confirmation candle និងគ្រប់គ្រងហានិភ័យដោយខ្លួនឯងជានិច្ច។ ប្រសិនបើ FETCH បរាជ័យ វាអាចជាដោយសារការកំណត់បណ្តាញ (network settings) របស់ browser/app ទប់ស្កាត់ការហៅទៅ Binance ដោយផ្ទាល់។
+  </div>
+
+</div>
+
+<script>
+const indicators = [
+  { key:'funding', title:'Funding Rate', hint:'អត្រា funding បច្ចុប្បន្ន', auto:true,
+    options:[
+      {label:'≈ 0.01% (ធម្មតា)', sub:'Neutral funding', bias:0, kind:'neutral'},
+      {label:'+0.05% ឡើង', sub:'Long crowd — ហានិភ័យ long squeeze', bias:-1, kind:'bear'},
+      {label:'-0.05% ចុះ', sub:'Short crowd — ហានិភ័យ short squeeze', bias:1, kind:'bull'},
+    ]
+  },
+  { key:'liquidity', title:'Liquidity Zone', hint:'តម្លៃស្ថិតលើ ឬក្រោម liquidity zone (កំណត់ដោយដៃ — ផ្អែកលើ chart របស់អ្នក)', auto:false,
+    options:[
+      {label:'ក្រោម Liquidity Zone', sub:'Price below zone', bias:1, kind:'bull'},
+      {label:'លើ Liquidity Zone', sub:'Price above zone', bias:-1, kind:'bear'},
+    ]
+  },
+  { key:'oi', title:'Open Interest', hint:'ការផ្លាស់ប្ដូរតម្លៃ + OI', auto:true,
+    options:[
+      {label:'Price Up + OI Up', sub:'Bullish continuation', bias:2, kind:'bull'},
+      {label:'Price Up + OI Down', sub:'Short covering rally (មិនស្ថិតស្ថេរ)', bias:1, kind:'neutral'},
+      {label:'Price Down + OI Down', sub:'Panic sell / liquidity dump', bias:-1, kind:'neutral'},
+      {label:'Price Down + OI Up', sub:'Bearish continuation', bias:-2, kind:'bear'},
+    ]
+  },
+  { key:'volume', title:'Volume', hint:'ការផ្លាស់ប្ដូរតម្លៃ + volume', auto:true,
+    options:[
+      {label:'Price Up + Vol Up', sub:'Bullish strong', bias:2, kind:'bull'},
+      {label:'Price Up + Vol Down', sub:'Weak move (fake breakout)', bias:0, kind:'neutral'},
+      {label:'Price Down + Vol Up', sub:'Bearish strong', bias:-2, kind:'bear'},
+      {label:'Price Down + Vol Down', sub:'Weak dump (rebound possible)', bias:0, kind:'neutral'},
+    ]
+  },
+  { key:'cvd', title:'CVD', hint:'Cumulative Volume Delta vs តម្លៃ (ប៉ាន់ស្មានពី taker buy/sell)', auto:true,
+    options:[
+      {label:'Price Up + CVD Up', sub:'Bullish strong', bias:2, kind:'bull'},
+      {label:'Price Up + CVD Down', sub:'Bearish divergence', bias:-1, kind:'bear'},
+      {label:'Price Down + CVD Up', sub:'Bullish divergence', bias:1, kind:'bull'},
+      {label:'Delta Spike', sub:'Breakout liquidity — ប្រុងប្រយ័ត្ន', bias:0, kind:'neutral'},
+    ]
+  },
+  { key:'ema', title:'EMA 20/50', hint:'ទំនាក់ទំនង EMA 20 និង 50', auto:true,
+    options:[
+      {label:'20 លើ 50', sub:'Bullish trend', bias:1, kind:'bull'},
+      {label:'20 ក្រោម 50', sub:'Bearish trend', bias:-1, kind:'bear'},
+      {label:'Golden Cross (20 កាត់ឡើងលើ 50)', sub:'Bullish signal', bias:2, kind:'bull'},
+      {label:'Death Cross (20 ចុះកាត់ក្រោម 50)', sub:'Bearish signal', bias:-2, kind:'bear'},
+    ]
+  },
+  { key:'macd', title:'MACD', hint:'MACD line vs Signal line', auto:true,
+    options:[
+      {label:'MACD លើ Signal', sub:'Buy zone (>0 bullish)', bias:2, kind:'bull'},
+      {label:'MACD ក្រោម Signal', sub:'Sell zone (<0 bearish)', bias:-2, kind:'bear'},
+    ]
+  },
+  { key:'rsi', title:'RSI', hint:'RSI(14) ជាចម្បង + ការតម្រឹមទិសដៅជាមួយ RSI(6) និង RSI(24)', auto:true,
+    options:[
+      {label:'RSI > 70 — Overbought', sub:'6>14>24 confirmed — ប្រយ័ត្ន reversal ចុះ', bias:-1, kind:'bear'},
+      {label:'RSI < 30 — Oversold', sub:'6<14<24 confirmed — ប្រយ័ត្ន reversal ឡើង', bias:1, kind:'bull'},
+      {label:'Uptrend — RSI 40-80', sub:'Long zone (RSI 40 gose)', bias:1, kind:'bull'},
+      {label:'Downtrend — RSI 20-60', sub:'Short zone — 24>14>6 (RSI 60 gose)', bias:-1, kind:'bear'},
+    ]
+  },
+  { key:'ratio', title:'Long/Short Ratio (All Accounts)', hint:'សមាមាត្រ Long/Short គ្រប់ account (retail+whale ស្មើគ្នា — contrarian)', auto:true,
+    options:[
+      {label:'Ratio ≥ 1.2', sub:'Long crowd ច្រើនពេក — ហានិភ័យ long squeeze', bias:-1, kind:'bear'},
+      {label:'Ratio ≤ 0.8', sub:'Short crowd ច្រើនពេក — ហានិភ័យ short squeeze', bias:1, kind:'bull'},
+      {label:'0.8 – 1.2', sub:'Balanced — គ្មានទំនោរច្បាស់លាស់', bias:0, kind:'neutral'},
+    ]
+  },
+  { key:'topRatio', title:'Top Trader Ratio (Weighted by Position)', hint:'សមាមាត្រ whale/large trader ពិតប្រាកដ — weight តាមទំហំ position ជាជាង count account (ទុកចិត្តបានជាង global ratio)', auto:true,
+    options:[
+      {label:'Ratio ≥ 1.2', sub:'Whale majority long — ហានិភ័យ long squeeze បើ price ចុះ', bias:-1, kind:'bear'},
+      {label:'Ratio ≤ 0.8', sub:'Whale majority short — ហានិភ័យ short squeeze បើ price ឡើង', bias:1, kind:'bull'},
+      {label:'0.8 – 1.2', sub:'Whale positioning balanced', bias:0, kind:'neutral'},
+    ]
+  },
+];
+
+const state = {};
+const autoFlag = {};
+let liquidityZonePrice = null;
+let liquidityZonePrice2 = null;
+let livePrice = null;
+let rsiPeriodValues = null; // {r6, r14, r24}
+let confirmCandleInfo = null; // {isBull, isBear, open, close, changePct}
+
+function render(){
+  const root = document.getElementById('cardsRoot');
+  root.innerHTML = '';
+  indicators.forEach(ind=>{
+    const card = document.createElement('div');
+    card.className='card';
+    card.id = 'card-'+ind.key;
+    const selIdx = state[ind.key];
+    let tagText = 'PENDING', tagClass='';
+    if(selIdx!==undefined){
+      if(autoFlag[ind.key]){ tagText='AUTO'; tagClass='auto'; }
+      else { tagText='SET'; tagClass='set'; }
+    }
+    card.innerHTML = `
+      <h3>${ind.title} <span class="tag ${tagClass}" id="tag-${ind.key}">${tagText}</span></h3>
+      <div class="hint kh">${ind.hint}</div>
+      ${ind.key==='liquidity' ? `
+        <div class="zonebox">
+          <div class="zonerow">
+            <label class="kh">តម្លៃ Zone 1 ($)</label>
+            <input type="number" id="zonePriceInput" inputmode="decimal" placeholder="ឧ. 65000"
+                   value="${liquidityZonePrice!==null ? liquidityZonePrice : ''}">
+          </div>
+          <div class="zonerow">
+            <label class="kh">តម្លៃ Zone 2 ($) <span class="optional">optional</span></label>
+            <input type="number" id="zonePriceInput2" inputmode="decimal" placeholder="ឧ. 63000"
+                   value="${liquidityZonePrice2!==null ? liquidityZonePrice2 : ''}">
+          </div>
+          <div class="zonestatus kh" id="zoneStatus">${buildZoneStatusText()}</div>
+        </div>
+      ` : ''}
+      ${ind.key==='rsi' ? `
+        <div class="zonebox">
+          <div class="zonestatus kh" id="rsiValuesStatus">${
+            rsiPeriodValues===null ? 'ត្រូវ Fetch Live Data ដើម្បីមើលតម្លៃ RSI 6/14/24'
+            : `RSI6 ${rsiPeriodValues.r6.toFixed(1)} · RSI14 ${rsiPeriodValues.r14.toFixed(1)} · RSI24 ${rsiPeriodValues.r24.toFixed(1)} ${
+                rsiPeriodValues.r6>rsiPeriodValues.r14 && rsiPeriodValues.r14>rsiPeriodValues.r24 ? '(6>14>24 ↑ aligned)'
+                : rsiPeriodValues.r6<rsiPeriodValues.r14 && rsiPeriodValues.r14<rsiPeriodValues.r24 ? '(6<14<24 ↓ aligned)'
+                : '(mixed — no clear alignment)'
+              }`
+          }</div>
+        </div>
+      ` : ''}
+      <div class="opts" data-key="${ind.key}"></div>
+    `;
+    const optsWrap = card.querySelector('.opts');
+    ind.options.forEach((opt,i)=>{
+      const el = document.createElement('div');
+      const isSel = selIdx===i;
+      el.className='opt kh' + (isSel ? ' sel-'+opt.kind : '') + (isSel && autoFlag[ind.key] ? ' auto-marked' : '');
+      el.innerHTML = `<div class="oline1">${opt.label}</div><div class="oline2">${opt.sub}</div>`;
+      el.addEventListener('click', ()=>{
+        if(state[ind.key]===i){ delete state[ind.key]; delete autoFlag[ind.key]; }
+        else { state[ind.key]=i; delete autoFlag[ind.key]; }
+        render();
+      });
+      optsWrap.appendChild(el);
+    });
+    root.appendChild(card);
+
+    if(ind.key==='liquidity'){
+      const zoneInput = card.querySelector('#zonePriceInput');
+      zoneInput.addEventListener('input', ()=>{
+        const val = parseFloat(zoneInput.value);
+        liquidityZonePrice = isNaN(val) ? null : val;
+        computeLiquidityAuto();
+        updateLiquidityUI();
+        updateVerdict();
+      });
+      const zoneInput2 = card.querySelector('#zonePriceInput2');
+      zoneInput2.addEventListener('input', ()=>{
+        const val = parseFloat(zoneInput2.value);
+        liquidityZonePrice2 = isNaN(val) ? null : val;
+        computeLiquidityAuto();
+        updateLiquidityUI();
+        updateVerdict();
+      });
+    }
+  });
+  updateVerdict();
+}
+
+// Reads whatever momentum signal is available to guess which way price is
+// currently heading — used to judge which liquidity zone is likely to be
+// tested first (not just which is nearest in raw distance).
+function getMomentumDirection(){
+  if(confirmCandleInfo){
+    if(confirmCandleInfo.isBull) return 'bull';
+    if(confirmCandleInfo.isBear) return 'bear';
+  }
+  if(state.ema===0 || state.ema===2) return 'bull'; // bullish trend / golden cross
+  if(state.ema===1 || state.ema===3) return 'bear'; // bearish trend / death cross
+  return null;
+}
+
+function classifyZones(){
+  const zones = [];
+  if(liquidityZonePrice!==null) zones.push({label:'Zone 1', price:liquidityZonePrice});
+  if(liquidityZonePrice2!==null) zones.push({label:'Zone 2', price:liquidityZonePrice2});
+  if(livePrice===null) return zones;
+  zones.forEach(z=>{
+    z.dist = Math.abs(livePrice - z.price);
+    z.distPct = (z.dist/livePrice)*100;
+    z.position = z.price > livePrice ? 'above' : 'below'; // where the zone sits relative to price
+    z.side = z.position==='above' ? 'ខាងលើ' : 'ខាងក្រោម';
+  });
+  return zones;
+}
+
+// Decide which zone is the "primary" one — the zone momentum is currently
+// carrying price toward, falling back to the nearest zone by raw distance
+// when no momentum signal is available yet.
+function pickPrimaryZone(zones){
+  if(zones.length===0) return {zone:null, reason:null};
+  if(zones.length===1) return {zone:zones[0], reason:'only'};
+
+  const momentum = getMomentumDirection();
+  if(momentum==='bull'){
+    const target = zones.find(z=>z.position==='above');
+    if(target) return {zone:target, reason:'momentum'};
+  } else if(momentum==='bear'){
+    const target = zones.find(z=>z.position==='below');
+    if(target) return {zone:target, reason:'momentum'};
+  }
+  // fallback: nearest by raw distance
+  const nearer = zones[0].dist <= zones[1].dist ? zones[0] : zones[1];
+  return {zone:nearer, reason:'distance'};
+}
+
+function computeLiquidityAuto(){
+  const zones = classifyZones();
+  if(zones.length===0 || livePrice===null) return;
+  const {zone} = pickPrimaryZone(zones);
+  if(!zone) return;
+  state.liquidity = zone.position==='above' ? 1 : 0; // 0=below zone(bull), 1=above zone(bear)
+  autoFlag.liquidity = true;
+}
+
+function buildZoneStatusText(){
+  if(livePrice===null) return 'ត្រូវ Fetch Live Data ដើម្បីប្រៀបធៀបទៅតម្លៃបច្ចុប្បន្ន';
+
+  const zones = classifyZones();
+  if(zones.length===0) return `តម្លៃបច្ចុប្បន្ន $${livePrice.toLocaleString()} — សូមបញ្ចូល zone price យ៉ាងហោចណាស់មួយ`;
+
+  if(zones.length===1){
+    const z = zones[0];
+    return `តម្លៃបច្ចុប្បន្ន $${livePrice.toLocaleString()} ${z.side} ${z.label} $${z.price.toLocaleString()} (${z.distPct.toFixed(2)}%)`;
+  }
+
+  const {zone:primary, reason} = pickPrimaryZone(zones);
+  const other = zones.find(z=>z!==primary);
+  const momentum = getMomentumDirection();
+
+  let reasonText;
+  if(reason==='momentum'){
+    reasonText = `ទិសដៅ momentum បច្ចុប្បន្នជា ${momentum==='bull'?'Bullish ⬆':'Bearish ⬇'} → ទំនងជាទៅរក ${primary.label} មុន`;
+  } else {
+    reasonText = `មិនទាន់មាន momentum signal ច្បាស់លាស់ — ប្រើ zone ជិតបំផុតតាមចម្ងាយជំនួសវិញ`;
+  }
+
+  return `តម្លៃបច្ចុប្បន្ន $${livePrice.toLocaleString()} → 🎯 ${primary.label} ($${primary.price.toLocaleString()}, ${primary.side}, ${primary.distPct.toFixed(2)}%) ទំនងត្រូវប៉ះមុន ${other.label} ($${other.price.toLocaleString()}, ${other.distPct.toFixed(2)}%). ${reasonText}`;
+}
+
+// Partial DOM update for the liquidity card only — avoids rebuilding the whole
+// grid (and stealing input focus) every time the user types a digit.
+function updateLiquidityUI(){
+  const zoneStatus = document.getElementById('zoneStatus');
+  if(zoneStatus){
+    zoneStatus.textContent = buildZoneStatusText();
+  }
+  const ind = indicators.find(x=>x.key==='liquidity');
+  const optsWrap = document.querySelector('.opts[data-key="liquidity"]');
+  if(optsWrap){
+    const opts = optsWrap.querySelectorAll('.opt');
+    opts.forEach((el,i)=>{
+      el.classList.remove('sel-bull','sel-bear','sel-neutral','auto-marked');
+      if(state.liquidity===i){
+        el.classList.add('sel-'+ind.options[i].kind);
+        if(autoFlag.liquidity) el.classList.add('auto-marked');
+      }
+    });
+  }
+  const tag = document.getElementById('tag-liquidity');
+  if(tag){
+    if(state.liquidity!==undefined){
+      tag.textContent = autoFlag.liquidity ? 'AUTO' : 'SET';
+      tag.className = 'tag ' + (autoFlag.liquidity ? 'auto' : 'set');
+    } else {
+      tag.textContent = 'PENDING';
+      tag.className = 'tag';
+    }
+  }
+}
+
+// CAMBO signal — derived directly from Funding Rate x Liquidity Zone,
+// exactly matching the 6-cell naming scheme from the reference table.
+// funding idx: 0=neutral(~0.01%), 1=+0.05% long crowd, 2=-0.05% short crowd
+// liquidity idx: 0=below zone, 1=above zone
+const CAMBO_MAP = {
+  '0-0': {label:'Slight Bearish',                                    kind:'bear'},
+  '0-1': {label:'Slight Bullish',                                    kind:'bull'},
+  '1-0': {label:'Bearish Short Term (short)',                        kind:'bear'},
+  '1-1': {label:'Bullish Short Term (long)',                         kind:'bull'},
+  '2-0': {label:'Bearish Short Term # Bullish Later Possible',       kind:'neutral'},
+  '2-1': {label:'Bullish (long)',                                    kind:'bull'},
+};
+
+function computeCamboSignal(){
+  const f = state.funding, l = state.liquidity;
+  if(f===undefined || l===undefined){
+    return {label:'Waiting Confirmation', kind:'neutral', complete:false};
+  }
+  const hit = CAMBO_MAP[`${f}-${l}`];
+  return hit ? {...hit, complete:true} : {label:'Waiting Confirmation', kind:'neutral', complete:false};
+}
+
+function updateConfirmBadge(cls){
+  const box = document.getElementById('confirmBadge');
+  const valueEl = document.getElementById('confirmValue');
+
+  if(!confirmCandleInfo){
+    box.className = 'confirmbox confirm-pending';
+    valueEl.textContent = 'មិនទាន់មាន candle data — ចុច FETCH LIVE DATA';
+    return;
+  }
+
+  const dirText = confirmCandleInfo.changePct.toFixed(2)+'%';
+  if(cls==='bull' && confirmCandleInfo.isBull){
+    box.className = 'confirmbox confirm-ready';
+    valueEl.textContent = `✅ CONFIRMED — candle ចុងក្រោយបិទ Bullish (${dirText}), ស៊ីសង្វាក់ជាមួយ LONG signal — អាចពិចារណា entry`;
+  } else if(cls==='bear' && confirmCandleInfo.isBear){
+    box.className = 'confirmbox confirm-ready';
+    valueEl.textContent = `✅ CONFIRMED — candle ចុងក្រោយបិទ Bearish (${dirText}), ស៊ីសង្វាក់ជាមួយ SHORT signal — អាចពិចារណា entry`;
+  } else {
+    box.className = 'confirmbox confirm-wait';
+    valueEl.textContent = `⏳ មិនទាន់ confirm — candle ចុងក្រោយ ${confirmCandleInfo.isBull?'Bullish':confirmCandleInfo.isBear?'Bearish':'Doji'} (${dirText}) មិនទាន់ស៊ីគ្នានឹង signal ទេ — រង់ចាំ candle បន្ទាប់`;
+  }
+}
+
+function updateDirectionBadge(direction, sub, kindClass){
+  const badge = document.getElementById('directionBadge');
+  const valueEl = document.getElementById('dirValue');
+  const subEl = document.getElementById('dirSub');
+  badge.className = 'dirbadge dir-' + kindClass;
+  valueEl.textContent = direction;
+  subEl.textContent = sub;
+}
+
+function updateCamboBox(cambo){
+  const box = document.getElementById('camboBox');
+  const headline = document.getElementById('camboHeadline');
+  const notes = document.getElementById('camboNotes');
+  box.className = 'verdict ' + cambo.kind;
+  headline.textContent = cambo.label;
+  if(!cambo.complete){
+    notes.textContent = 'ជ្រើសរើស Funding Rate និង Liquidity Zone ខាងក្រោម ដើម្បីទទួលបានស្លាក CAMBO ច្បាស់លាស់។';
+  } else {
+    notes.innerHTML = 'ស្លាកនេះកើតចេញផ្ទាល់ពី <strong>Funding Rate</strong> + <strong>Liquidity Zone</strong> ដូចក្នុងតារាង CAMBO ដើម — មិនរាប់បញ្ចូល indicator ផ្សេងទៀតទេ។';
+  }
+}
+
+
+function updateVerdict(){
+  const keys = Object.keys(state);
+  const box = document.getElementById('verdictBox');
+  const headline = document.getElementById('verdictHeadline');
+  const notes = document.getElementById('verdictNotes');
+  const fill = document.getElementById('scoreFill');
+  const needle = document.getElementById('scoreNeedle');
+  const scorePctEl = document.getElementById('scorePct');
+  const dontTradeBanner = document.getElementById('dontTradeBanner');
+  const dontTradeReason = document.getElementById('dontTradeReason');
+
+  const cambo = computeCamboSignal();
+  updateCamboBox(cambo);
+
+  if(keys.length < 2){
+    box.className='verdict neutral';
+    headline.textContent = 'មិនទាន់មានទិន្នន័យគ្រប់គ្រាន់ — ជ្រើសរើសសូចនាករខាងក្រោម';
+    notes.innerHTML = 'ជ្រើសរើសយ៉ាងហោចណាស់ ២-៣ សូចនាករ ដើម្បីទទួលបានទិសដៅដែលអាចទុកចិត្តបាន។ <strong>Waiting Confirmation Candle</strong> តែងតែជាជំហានចុងក្រោយមុននឹងចូល entry ណាមួយ។';
+    fill.style.left='50%'; fill.style.width='0%';
+    needle.style.left='50%';
+    scorePctEl.textContent = 'N/A';
+    dontTradeBanner.style.display='none';
+    updateDirectionBadge('WAIT', 'ត្រូវជ្រើសរើសសូចនាករបន្ថែម ដើម្បីទទួលបានទិសដៅច្បាស់លាស់', 'wait');
+    updateConfirmBadge('neutral');
+    return;
+  }
+
+  let total=0, maxAbs=0;
+  keys.forEach(k=>{
+    const ind = indicators.find(i=>i.key===k);
+    const opt = ind.options[state[k]];
+    total += opt.bias;
+    maxAbs += 2;
+  });
+
+  const pct = maxAbs>0 ? (total/maxAbs) : 0;
+  const pos = ((pct+1)/2)*100;
+
+  needle.style.left = pos+'%';
+  if(pct>0){ fill.style.left='50%'; fill.style.width=(pos-50)+'%'; }
+  else { fill.style.left=pos+'%'; fill.style.width=(50-pos)+'%'; }
+  scorePctEl.textContent = (pct>=0?'+':'') + Math.round(pct*100) + '%';
+
+  let cls, head;
+  if(pct >= 0.5){ cls='bull'; head='Bullish (long) — សញ្ញាភាគច្រើនគាំទ្រទិសឡើង'; }
+  else if(pct >= 0.10){ cls='bull'; head='Bullish short term — ទំនោរឡើង ប៉ុន្តែមិនទាន់ខ្លាំង'; }
+  else if(pct > -0.10){ cls='neutral'; head='Mixed / Waiting Confirmation — សញ្ញាមិនច្បាស់លាស់'; }
+  else if(pct > -0.5){ cls='bear'; head='Bearish short term — ទំនោរចុះ ប៉ុន្តែមិនទាន់ខ្លាំង'; }
+  else { cls='bear'; head='Bearish (short) — សញ្ញាភាគច្រើនគាំទ្រទិសចុះ'; }
+
+  box.className='verdict '+cls;
+  headline.textContent = head;
+
+  // Don't Trade warning: fires when the CAMBO signal (funding × liquidity)
+  // points one direction while the broader multi-indicator composite points
+  // the opposite direction — a classic "signals disagree, stand aside" case.
+  const isConflict = cambo.complete && (cls==='bull' || cls==='bear') && (cambo.kind==='bull' || cambo.kind==='bear') && cambo.kind!==cls;
+  if(isConflict){
+    dontTradeBanner.style.display='block';
+    dontTradeReason.textContent = `CAMBO signal (${cambo.label}) ផ្ទុយពី Composite Read (${cls==='bull'?'Bullish':'Bearish'}) — ត្រូវរង់ចាំភាពស៊ីសង្វាក់គ្នា ឬ confirmation candle បន្ថែម មុននឹងចូល entry។`;
+  } else {
+    dontTradeBanner.style.display='none';
+  }
+
+  const pctLabel = (pct>=0?'+':'') + Math.round(pct*100) + '%';
+  if(isConflict){
+    updateDirectionBadge('WAIT', `CAMBO និង Composite ផ្ទុយគ្នា (${pctLabel}) — ជៀសវាង entry រហូតដល់មានភាពស៊ីសង្វាក់គ្នា`, 'wait');
+    updateConfirmBadge('neutral');
+  } else if(cls==='bull'){
+    updateDirectionBadge('LONG', `${head} (${pctLabel})`, 'long');
+    updateConfirmBadge('bull');
+  } else if(cls==='bear'){
+    updateDirectionBadge('SHORT', `${head} (${pctLabel})`, 'short');
+    updateConfirmBadge('bear');
+  } else {
+    updateDirectionBadge('WAIT', `${head} (${pctLabel})`, 'wait');
+    updateConfirmBadge('neutral');
+  }
+
+  const summary = keys.map(k=>{
+    const ind = indicators.find(i=>i.key===k);
+    const opt = ind.options[state[k]];
+    return `${ind.title}: ${opt.sub}`;
+  }).join(' · ');
+
+  notes.innerHTML = `<strong>${keys.length}/${indicators.length} សូចនាករបានជ្រើសរើស</strong> — ${summary}. តែងតែរង់ចាំ <strong>confirmation candle</strong> មុននឹងសម្រេចចិត្ត entry ណាមួយ។`;
+}
+
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  Object.keys(state).forEach(k=>delete state[k]);
+  Object.keys(autoFlag).forEach(k=>delete autoFlag[k]);
+  render();
+});
+
+function tick(){
+  const now = new Date();
+  document.getElementById('liveTime').textContent = now.toLocaleTimeString('en-GB',{hour12:false});
+}
+setInterval(tick,1000); tick();
+
+const quickPairs = ['BTCUSDT','ETHUSDT','AVAXUSDT','SOLUSDT'];
+const quickWrap = document.getElementById('quickbtns');
+const symbolInput = document.getElementById('symbolInput');
+function renderQuickBtns(){
+  quickWrap.innerHTML='';
+  quickPairs.forEach(p=>{
+    const b = document.createElement('button');
+    b.className='quickbtn'+(symbolInput.value.toUpperCase()===p?' active':'');
+    b.textContent=p.replace('USDT','');
+    b.addEventListener('click',()=>{ symbolInput.value=p; renderQuickBtns(); });
+    quickWrap.appendChild(b);
+  });
+}
+symbolInput.addEventListener('input', renderQuickBtns);
+renderQuickBtns();
+
+function ema(values, period){
+  const k = 2/(period+1);
+  const out = [values[0]];
+  for(let i=1;i<values.length;i++){
+    out.push(values[i]*k + out[i-1]*(1-k));
+  }
+  return out;
+}
+
+function rsi(values, period=14){
+  let gains=0, losses=0;
+  for(let i=values.length-period;i<values.length;i++){
+    const diff = values[i]-values[i-1];
+    if(diff>=0) gains+=diff; else losses-=diff;
+  }
+  const avgGain=gains/period, avgLoss=losses/period;
+  if(avgLoss===0) return 100;
+  const rs = avgGain/avgLoss;
+  return 100 - (100/(1+rs));
+}
+
+function macdCalc(closes){
+  const ema12 = ema(closes,12);
+  const ema26 = ema(closes,26);
+  const macdLine = closes.map((_,i)=>ema12[i]-ema26[i]);
+  const signalLine = ema(macdLine,9);
+  return {macdLine, signalLine};
+}
+
+async function fetchJSON(url){
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status+' on '+url);
+    return await res.json();
+  } catch(directErr){
+    // Binance's public API frequently omits Access-Control-Allow-Origin for
+    // arbitrary third-party origins, which browsers report as a generic
+    // "Failed to fetch" (not a descriptive CORS message). Retry once through
+    // a public CORS proxy before giving up.
+    try{
+      const proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+      const res2 = await fetch(proxied);
+      if(!res2.ok) throw new Error('HTTP '+res2.status+' (via proxy) on '+url);
+      return await res2.json();
+    } catch(proxyErr){
+      throw new Error('Direct fetch failed ('+directErr.message+') and proxy fallback failed ('+proxyErr.message+') for '+url);
+    }
+  }
+}
+
+const statusEl = document.getElementById('liveStatus');
+const fetchBtn = document.getElementById('fetchBtn');
+
+fetchBtn.addEventListener('click', async ()=>{
+  const symbol = symbolInput.value.trim().toUpperCase();
+  const interval = document.getElementById('intervalSelect').value;
+  if(!symbol){ statusEl.className='livestatus err'; statusEl.textContent='សូមបញ្ចូល symbol (ឧ. BTCUSDT)'; return; }
+
+  fetchBtn.disabled = true;
+  statusEl.className='livestatus';
+  statusEl.textContent = 'កំពុងទាញទិន្នន័យពី Binance Futures...';
+
+  try{
+    const base = 'https://fapi.binance.com';
+    const [klines, premium, oiHist, ratioHist, topRatioHist] = await Promise.all([
+      fetchJSON(`${base}/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=100`),
+      fetchJSON(`${base}/fapi/v1/premiumIndex?symbol=${symbol}`),
+      fetchJSON(`${base}/futures/data/openInterestHist?symbol=${symbol}&period=${interval}&limit=2`),
+      fetchJSON(`${base}/futures/data/globalLongShortAccountRatio?symbol=${symbol}&period=${interval}&limit=1`).catch(()=>null),
+      fetchJSON(`${base}/futures/data/topLongShortPositionRatio?symbol=${symbol}&period=${interval}&limit=1`).catch(()=>null)
+    ]);
+
+    if(!klines || klines.length < 55) throw new Error('ទិន្នន័យ candle មិនគ្រប់គ្រាន់');
+
+    const closes = klines.map(k=>parseFloat(k[4]));
+    const vols = klines.map(k=>parseFloat(k[5]));
+    const takerBuy = klines.map(k=>parseFloat(k[9]));
+
+    const lastClose = closes[closes.length-1];
+    const prevClose = closes[closes.length-2];
+    const priceUp = lastClose > prevClose;
+
+    const fundingRate = parseFloat(premium.lastFundingRate);
+    let fundingIdx;
+    if(fundingRate >= 0.0005) fundingIdx = 1;
+    else if(fundingRate <= -0.0005) fundingIdx = 2;
+    else fundingIdx = 0;
+
+    let oiIdx = null;
+    if(oiHist && oiHist.length>=2){
+      const oiPrev = parseFloat(oiHist[oiHist.length-2].sumOpenInterest);
+      const oiLast = parseFloat(oiHist[oiHist.length-1].sumOpenInterest);
+      const oiUp = oiLast > oiPrev;
+      if(priceUp && oiUp) oiIdx=0;
+      else if(priceUp && !oiUp) oiIdx=1;
+      else if(!priceUp && !oiUp) oiIdx=2;
+      else oiIdx=3;
+    }
+
+    const lastVol = vols[vols.length-1];
+    const prevVol = vols[vols.length-2];
+    const volUp = lastVol > prevVol;
+    let volIdx;
+    if(priceUp && volUp) volIdx=0;
+    else if(priceUp && !volUp) volIdx=1;
+    else if(!priceUp && volUp) volIdx=2;
+    else volIdx=3;
+
+    const deltas = klines.map((k,i)=> (2*takerBuy[i] - vols[i]) );
+    const lastDelta = deltas[deltas.length-1];
+    const recentDeltas = deltas.slice(-11,-1);
+    const avgAbsDelta = recentDeltas.reduce((a,b)=>a+Math.abs(b),0)/recentDeltas.length;
+    let cvdIdx;
+    if(Math.abs(lastDelta) > avgAbsDelta*2.2){
+      cvdIdx = 3;
+    } else {
+      const cvdUp = lastDelta > 0;
+      if(priceUp && cvdUp) cvdIdx=0;
+      else if(priceUp && !cvdUp) cvdIdx=1;
+      else if(!priceUp && cvdUp) cvdIdx=2;
+      else cvdIdx=1;
+    }
+
+    const ema20 = ema(closes,20);
+    const ema50 = ema(closes,50);
+    const e20now = ema20[ema20.length-1], e50now = ema50[ema50.length-1];
+    const e20prev = ema20[ema20.length-2], e50prev = ema50[ema50.length-2];
+    let emaIdx;
+    if(e20prev<=e50prev && e20now>e50now) emaIdx=2;
+    else if(e20prev>=e50prev && e20now<e50now) emaIdx=3;
+    else if(e20now>e50now) emaIdx=0;
+    else emaIdx=1;
+
+    const {macdLine, signalLine} = macdCalc(closes);
+    const mNow = macdLine[macdLine.length-1], sNow = signalLine[signalLine.length-1];
+    const macdIdx = mNow > sNow ? 0 : 1;
+
+    const rsi6 = rsi(closes,6);
+    const rsi14 = rsi(closes,14);
+    const rsi24 = rsi(closes,24);
+    const rsiVal = rsi14; // primary reading shown in status line
+    const alignedUp = rsi6 > rsi14 && rsi14 > rsi24;   // 6>14>24
+    const alignedDown = rsi6 < rsi14 && rsi14 < rsi24; // 6<14<24
+
+    let rsiIdx;
+    if(rsi14>70 && alignedUp) rsiIdx=0;        // Overbought, confirmed by momentum alignment
+    else if(rsi14<30 && alignedDown) rsiIdx=1; // Oversold, confirmed by momentum alignment
+    else if(rsi14>70) rsiIdx=0;                // Overbought (unconfirmed alignment)
+    else if(rsi14<30) rsiIdx=1;                // Oversold (unconfirmed alignment)
+    else if(rsi14>=40 && rsi14<=80 && !alignedDown) rsiIdx=2; // Uptrend / long zone
+    else rsiIdx=3;                              // Downtrend / short zone
+
+    let ratioIdx = null;
+    if(ratioHist && Array.isArray(ratioHist) && ratioHist.length>0){
+      const lsRatio = parseFloat(ratioHist[ratioHist.length-1].longShortRatio);
+      if(!isNaN(lsRatio)){
+        if(lsRatio>=1.2) ratioIdx=0;
+        else if(lsRatio<=0.8) ratioIdx=1;
+        else ratioIdx=2;
+      }
+    }
+
+    let topRatioIdx = null;
+    if(topRatioHist && Array.isArray(topRatioHist) && topRatioHist.length>0){
+      const topLsRatio = parseFloat(topRatioHist[topRatioHist.length-1].longShortRatio);
+      if(!isNaN(topLsRatio)){
+        if(topLsRatio>=1.2) topRatioIdx=0;
+        else if(topLsRatio<=0.8) topRatioIdx=1;
+        else topRatioIdx=2;
+      }
+    }
+
+    state.funding=fundingIdx; autoFlag.funding=true;
+    if(oiIdx!==null){ state.oi=oiIdx; autoFlag.oi=true; }
+    state.volume=volIdx; autoFlag.volume=true;
+    state.cvd=cvdIdx; autoFlag.cvd=true;
+    state.ema=emaIdx; autoFlag.ema=true;
+    state.macd=macdIdx; autoFlag.macd=true;
+    state.rsi=rsiIdx; autoFlag.rsi=true;
+    if(ratioIdx!==null){ state.ratio=ratioIdx; autoFlag.ratio=true; }
+    if(topRatioIdx!==null){ state.topRatio=topRatioIdx; autoFlag.topRatio=true; }
+
+    livePrice = lastClose;
+    computeLiquidityAuto();
+    rsiPeriodValues = {r6: rsi6, r14: rsi14, r24: rsi24};
+
+    // Confirmation candle: use the second-to-last kline, since the very last
+    // one returned by Binance is usually still forming (not yet closed).
+    const closedCandle = klines.length>=2 ? klines[klines.length-2] : klines[klines.length-1];
+    const cOpen = parseFloat(closedCandle[1]);
+    const cClose = parseFloat(closedCandle[4]);
+    confirmCandleInfo = {
+      isBull: cClose > cOpen,
+      isBear: cClose < cOpen,
+      open: cOpen,
+      close: cClose,
+      changePct: ((cClose-cOpen)/cOpen)*100
+    };
+
+    render();
+
+    const now = new Date();
+    statusEl.className='livestatus ok';
+    const zoneNote = (liquidityZonePrice!==null || liquidityZonePrice2!==null)
+      ? 'Liquidity Zone ធៀបស្វ័យប្រវត្តិទៅតម្លៃដែលអ្នកបានកំណត់។'
+      : 'សូមកំណត់ Liquidity Zone ដោយដៃខាងក្រោម ដើម្បីឲ្យវាប្រៀបធៀបស្វ័យប្រវត្តិ។';
+    const ratioNote = ratioIdx!==null ? ` | L/S Ratio ${parseFloat(ratioHist[ratioHist.length-1].longShortRatio).toFixed(3)}` : ' | L/S Ratio N/A';
+    const topRatioNote = topRatioIdx!==null ? ` | Top Trader Ratio ${parseFloat(topRatioHist[topRatioHist.length-1].longShortRatio).toFixed(3)}` : ' | Top Trader Ratio N/A';
+    statusEl.textContent = `✓ ${symbol} @ ${interval} — Price ${lastClose.toFixed(4)} | Funding ${(fundingRate*100).toFixed(4)}% | RSI ${rsiVal.toFixed(1)}${ratioNote}${topRatioNote} — ធ្វើបច្ចុប្បន្នភាពនៅ ${now.toLocaleTimeString('en-GB',{hour12:false})}. ${zoneNote}`;
+
+  } catch(err){
+    statusEl.className='livestatus err';
+    statusEl.textContent = 'មិនអាចទាញទិន្នន័យបានទេ: ' + err.message + ' — Binance ច្រើនតែទប់ស្កាត់ CORS សម្រាប់គេហទំព័រក្រៅ ដូច្នេះ app បានព្យាយាមទាញតាម proxy ជំនួសរួច ប៉ុន្តែក៏បរាជ័យដែរ។ សូមព្យាយាមម្តងទៀត ឬបំពេញ card នីមួយៗដោយដៃ។';
+  } finally {
+    fetchBtn.disabled = false;
+  }
+});
+
+// ---- Position Size Calculator ----
+const calcInputs = ['calcBalance','calcRisk','calcEntry','calcSL','calcTP','calcLeverage'].map(id=>document.getElementById(id));
+const calcOutput = document.getElementById('calcOutput');
+
+function updateCalc(){
+  const balance = parseFloat(document.getElementById('calcBalance').value);
+  const riskPct = parseFloat(document.getElementById('calcRisk').value);
+  const entry = parseFloat(document.getElementById('calcEntry').value);
+  const sl = parseFloat(document.getElementById('calcSL').value);
+  const tp = parseFloat(document.getElementById('calcTP').value);
+  const leverage = parseFloat(document.getElementById('calcLeverage').value) || 1;
+
+  if(isNaN(balance) || isNaN(riskPct) || isNaN(entry) || isNaN(sl) || balance<=0 || riskPct<=0 || entry<=0 || sl<=0 || entry===sl){
+    calcOutput.innerHTML = '<div class="calc-output-line kh">សូមបំពេញ Account Balance, Risk%, Entry, និង Stop Loss ដើម្បីគណនា</div>';
+    return;
+  }
+
+  const direction = entry > sl ? 'LONG' : 'SHORT';
+  const riskAmount = balance * (riskPct/100);
+  const priceDistance = Math.abs(entry - sl);
+  const slPct = (priceDistance/entry)*100;
+  const positionSizeUnits = riskAmount / priceDistance;
+  const positionValue = positionSizeUnits * entry;
+  const marginRequired = positionValue / leverage;
+  const effectiveLeverageUsed = positionValue / balance;
+
+  let lines = [];
+  lines.push(`ទិសដៅ (ពី Entry/SL): <strong>${direction}</strong> · Stop distance: <strong>${slPct.toFixed(2)}%</strong>`);
+  lines.push(`ហានិភ័យជាដុល្លារ: <strong class="warn">$${riskAmount.toFixed(2)}</strong> (${riskPct}% នៃ $${balance.toLocaleString()})`);
+  lines.push(`Position Size: <strong class="highlight">${positionSizeUnits.toFixed(6)} units</strong> (≈ $${positionValue.toFixed(2)} notional)`);
+  lines.push(`Margin ត្រូវការ (@ ${leverage}x leverage): <strong>$${marginRequired.toFixed(2)}</strong>`);
+
+  if(effectiveLeverageUsed > leverage){
+    lines.push(`<span class="warn">⚠ Notional value ($${positionValue.toFixed(2)}) លើសពី account balance × leverage — សូមពិនិត្យលេខម្តងទៀត</span>`);
+  }
+
+  // Liquidation price estimate — simplified approximation (isolated margin,
+  // ignoring maintenance margin tiers, fees, and funding). Actual liquidation
+  // varies by exchange; treat this as a rough safety check, not an exact figure.
+  const liqDistancePct = 1 / leverage; // fraction, e.g. leverage 20 -> 0.05 (5%)
+  let liqPrice;
+  if(direction === 'LONG'){
+    liqPrice = entry * (1 - liqDistancePct);
+  } else {
+    liqPrice = entry * (1 + liqDistancePct);
+  }
+  const slDistanceFraction = slPct / 100;
+  const safetyMultiple = liqDistancePct / slDistanceFraction;
+
+  lines.push(`Liquidation Price (សន្មត, @ ${leverage}x): <strong>$${liqPrice.toFixed(2)}</strong> (≈${(liqDistancePct*100).toFixed(2)}% ពី entry)`);
+
+  if(slDistanceFraction >= liqDistancePct){
+    lines.push(`<span class="warn">⚠ គ្រោះថ្នាក់! SL (${slPct.toFixed(2)}%) ឆ្ងាយជាង ឬស្មើ liquidation (${(liqDistancePct*100).toFixed(2)}%) — position នឹងត្រូវ liquidate មុន SL ដល់ដេីម្បី។ សូមបន្ថយ leverage ឬដាក់ SL ជិតជាងនេះ។</span>`);
+  } else if(safetyMultiple < 3){
+    lines.push(`<span class="warn">⚠ Buffer ចង្អៀត — liquidation ឆ្ងាយពី SL តែ ${safetyMultiple.toFixed(1)}x ប៉ុណ្ណោះ (ណែនាំ ≥3x)។ Wick តូចអាច liquidate មុន SL hit។</span>`);
+  } else {
+    lines.push(`✓ Safe — liquidation ឆ្ងាយពី SL ${safetyMultiple.toFixed(1)}x (≥3x ណែនាំ)`);
+  }
+
+  if(!isNaN(tp) && tp>0 && tp!==entry){
+    const rewardDistance = Math.abs(tp - entry);
+    const rr = rewardDistance / priceDistance;
+    const potentialProfit = positionSizeUnits * rewardDistance;
+    const rrClass = rr>=2 ? 'highlight' : 'warn';
+    lines.push(`R:R Ratio: <strong class="${rrClass}">1:${rr.toFixed(2)}</strong> ${rr<2?'(ក្រោម 1:2 — ប្រយ័ត្ន)':'(≥1:2 ✓)'}`);
+    lines.push(`ចំណេញប្រសិនបើដល់ TP: <strong class="highlight">$${potentialProfit.toFixed(2)}</strong>`);
+  }
+
+  calcOutput.innerHTML = lines.map(l=>`<div class="calc-output-line kh">${l}</div>`).join('');
+}
+
+calcInputs.forEach(el=>el.addEventListener('input', updateCalc));
+updateCalc();
+
+render();
+
+// ---- PWA: service worker + install prompt ----
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(err=>console.warn('SW registration failed:', err));
+  });
+}
+
+let deferredPrompt = null;
+const installBar = document.getElementById('installBar');
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  installBar.style.display = 'flex';
+});
+
+installBtn?.addEventListener('click', async ()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  installBar.style.display = 'none';
+});
+
+window.addEventListener('appinstalled', ()=>{
+  installBar.style.display = 'none';
+});
+
+// iOS Safari has no beforeinstallprompt — show manual instructions instead
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+if(isIOS && !isStandalone){
+  installBar.style.display = 'flex';
+  installBar.querySelector('span').textContent = '📲 iOS: ចុច Share (ប្រអប់មានព្រួញ) → "Add to Home Screen" ដើម្បីដំឡើង app នេះ';
+  installBtn.style.display = 'none';
+}
+</script>
+</body>
+</html>
